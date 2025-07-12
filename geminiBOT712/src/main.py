@@ -2,7 +2,7 @@
 # Main entry point for the autonomous trading system.
 
 import asyncio
-from config.settings import setup_logging, TRADING_MODE
+from config.settings import setup_logging, TRADING_MODE, verify_encrypted_keys
 from utils.logger import get_logger
 import tweepy
 
@@ -26,6 +26,7 @@ from execution.paper_trader import PaperTrader
 from risk_management.portfolio_monitor import PortfolioMonitor
 
 setup_logging()
+verify_encrypted_keys()
 logger = get_logger(__name__)
 
 class TradingSystem:
