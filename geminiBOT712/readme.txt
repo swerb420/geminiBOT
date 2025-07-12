@@ -15,6 +15,12 @@ The entire architecture is containerized with Docker and designed for high avail
 -   **Real-Time Monitoring & Execution:** A full monitoring suite for system and API health, with a Telegram bot for alerts and control.
 -   **Advanced Backtesting Engine:** A pluggable, event-driven backtester for rigorously validating strategies against historical data.
 
+## Quick Start
+
+1. Create a `.env` file (see `.env.example`).
+2. Run `docker-compose up --build -d`.
+3. Initialize the database with `docker-compose exec app python scripts/initialize_db.py`.
+4. Follow logs using `docker-compose logs -f`.
 ---
 
 ## 2. System Architecture
