@@ -3,7 +3,6 @@ asyncio
 httpx
 fastapi
 uvicorn
-nginx
 sqlalchemy
 psycopg2-binary
 redis
