@@ -62,6 +62,7 @@ def verify_encrypted_keys():
             f"Encrypted keys file missing at {ENCRYPTED_KEYS_PATH}. Run scripts/encrypt_keys.py"
         )
 
+
 # --- Execution Mode ---
 # Determines whether the system trades in paper or live mode.
 TRADING_MODE = os.getenv("TRADING_MODE", "paper")
