@@ -83,19 +83,32 @@ class GoogleTrendsIngester(BaseIngester):
         loop = asyncio.get_running_loop()
         
         try:
-            # Build the payload
-            await loop.run_in_executor(
-                None, 
-                self.pytrends.build_payload, 
-                self.keywords, 
-                cat=0, 
-                timeframe='now 1-d', # Interest over the last day
-                geo='', 
-                gprop=''
-            )
-            
-            # Get interest over time
-            interest_df = await loop.run_in_executor(None, self.pytrends.interest_over_time)
+            delay = 1.0
+            for attempt in range(1, 4):
+                try:
+                    await loop.run_in_executor(
+                        None,
+                        self.pytrends.build_payload,
+                        self.keywords,
+                        cat=0,
+                        timeframe='now 1-d',
+                        geo='',
+                        gprop=''
+                    )
+
+                    interest_df = await loop.run_in_executor(
+                        None, self.pytrends.interest_over_time
+                    )
+                    break
+                except Exception as e:
+                    logger.warning(
+                        f"Attempt {attempt} failed fetching Google Trends: {e}",
+                        exc_info=True,
+                    )
+                    if attempt == 3:
+                        raise
+                    await asyncio.sleep(delay)
+                    delay *= 2
             
             if interest_df.empty:
                 logger.info("No new Google Trends data.")
