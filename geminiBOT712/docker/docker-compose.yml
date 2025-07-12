@@ -1,0 +1,133 @@
+# docker/docker-compose.yml
+# Defines the multi-container application services.
+
+version: '3.8'
+
+services:
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:latest
+    container_name: trading_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - /etc/letsencrypt:/etc/letsencrypt # For SSL certificates
+    depends_on:
+      - app
+    networks:
+      - trading_network
+
+  # Main Python Application
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: trading_app
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    volumes:
+      - ..:/app
+    depends_on:
+      - db
+      - redis
+    networks:
+      - trading_network
+
+  # PostgreSQL Database
+  db:
+    image: postgres:14-alpine
+    container_name: trading_db
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - trading_network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: trading_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - trading_network
+
+volumes:
+  postgres_data:
+
+networks:
+  trading_network:
+    driver: bridge
+```docker
+# docker/Dockerfile
+# Specifies the environment for the Python application.
+
+# Use the official Python image.
+FROM python:3.11-slim
+
+# Set the working directory in the container
+WORKDIR /app
+
+# Prevent Python from writing pyc files to disc
+ENV PYTHONDONTWRITEBYTECODE 1
+# Ensure Python output is sent straight to the terminal without buffering
+ENV PYTHONUNBUFFERED 1
+
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY ../requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the application code into the container
+COPY .. .
+
+# Command to run the application
+CMD ["python", "src/main.py"]
+```nginx
+# docker/nginx.conf
+# Nginx configuration for reverse proxy and SSL.
+
+events {}
+
+http {
+    server {
+        listen 80;
+        server_name your_domain.com; # Replace with your domain
+
+        # Redirect HTTP to HTTPS
+        location / {
+            return 301 https://$host$request_uri;
+        }
+    }
+
+    server {
+        listen 443 ssl;
+        server_name your_domain.com; # Replace with your domain
+
+        # SSL Certificates
+        ssl_certificate /etc/letsencrypt/live/your_domain.com/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/your_domain.com/privkey.pem;
+
+        location / {
+            proxy_pass http://app:8000; # Assuming the app runs on port 8000
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+    }
+}
