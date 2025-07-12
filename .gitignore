@@ -1,0 +1,30 @@
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+.eggs/
+*.egg-info/
+
+# Environments
+.env
+.venv
+venv/
+ENV/
+venv.bak/
+
+# Logs
+*.log
+logs/
+
+# Database files
+*.sqlite3
+*.db
+
+# Testing
+.pytest_cache/
+
+# Encrypted files
+encrypted_*.json

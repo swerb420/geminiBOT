@@ -3,7 +3,6 @@ asyncio
 httpx
 fastapi
 uvicorn
-nginx
 sqlalchemy
 psycopg2-binary
 redis
@@ -16,3 +15,9 @@ python-telegram-bot
 cryptography
 alembic
 pytest
+asyncpg
+joblib
+beautifulsoup4
+asyncpraw
+tweepy
+web3
