@@ -34,8 +34,7 @@ class BigShortIngester(BaseIngester):
         params = {"token": self.api_key}
 
         try:
-            response = await self.client.get(url, params=params)
-            response.raise_for_status()
+            response = await self.request_with_retries("GET", url, params=params)
             flow_data = response.json().get('data', [])
 
             if not flow_data:
@@ -94,8 +93,7 @@ class YahooFinanceIngester(BaseIngester):
         }
 
         try:
-            response = await self.client.get(url, params=params, headers=headers)
-            response.raise_for_status()
+            response = await self.request_with_retries("GET", url, params=params, headers=headers)
             quote_response = response.json().get('quoteResponse', {})
             results = quote_response.get('result', [])
 

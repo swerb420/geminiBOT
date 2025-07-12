@@ -22,8 +22,7 @@ class StocktwitsIngester(BaseIngester):
         url = f"https://api.stocktwits.com/api/2/streams/symbol/{symbol}.json"
         
         try:
-            response = await self.client.get(url, timeout=20.0)
-            response.raise_for_status()
+            response = await self.request_with_retries("GET", url, timeout=20.0)
             data = response.json()
             
             for message in data.get('messages', []):
@@ -87,8 +86,7 @@ class AlphaVantageIngester(BaseIngester):
             "apikey": self.api_key
         }
         try:
-            response = await self.client.get(self.api_endpoint, params=params)
-            response.raise_for_status()
+            response = await self.request_with_retries("GET", self.api_endpoint, params=params)
             data = response.json()
 
             if "Note" in data: # Indicates API limit reached
@@ -142,9 +140,22 @@ class FinvizScraper(BaseIngester):
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
         try:
-            async with httpx.AsyncClient(headers=headers, timeout=20.0) as client:
-                response = await client.get(url)
-                response.raise_for_status()
+            delay = 1.0
+            for attempt in range(1, 4):
+                try:
+                    async with httpx.AsyncClient(headers=headers, timeout=20.0) as client:
+                        response = await client.get(url)
+                        response.raise_for_status()
+                    break
+                except (httpx.RequestError, httpx.HTTPStatusError) as e:
+                    logger.warning(
+                        f"Attempt {attempt} failed scraping Finviz for {symbol}: {e}",
+                        exc_info=True,
+                    )
+                    if attempt == 3:
+                        raise
+                    await asyncio.sleep(delay)
+                    delay *= 2
                 
                 soup = BeautifulSoup(response.text, 'html.parser')
                 

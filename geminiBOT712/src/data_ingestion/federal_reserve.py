@@ -40,8 +40,7 @@ class FederalReserveIngester(BaseIngester):
             "sort_order": "desc"
         }
         try:
-            response = await self.client.get(url, params=params)
-            response.raise_for_status()
+            response = await self.request_with_retries("GET", url, params=params)
             data = response.json()
             latest_observation = data.get('observations', [{}])[0]
             
@@ -115,9 +114,22 @@ class TwitterIngester(BaseIngester):
             await asyncio.sleep(3600) # Sleep if disabled
             return
             
-        await self.configure_stream_rules()
-        logger.info("Starting Twitter stream...")
-        await self.client.filter(tweet_fields=["author_id"])
+        delay = 1.0
+        for attempt in range(1, 4):
+            try:
+                await self.configure_stream_rules()
+                logger.info("Starting Twitter stream...")
+                await self.client.filter(tweet_fields=["author_id"])
+                break
+            except Exception as e:
+                logger.warning(
+                    f"Twitter stream attempt {attempt} failed: {e}", exc_info=True
+                )
+                if attempt == 3:
+                    logger.error("Twitter stream failed after retries", exc_info=True)
+                    raise
+                await asyncio.sleep(delay)
+                delay *= 2
 
     # Override the default run method for this streaming ingester
     async def run(self, interval_seconds: int = 0):
