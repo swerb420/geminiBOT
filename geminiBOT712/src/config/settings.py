@@ -2,9 +2,15 @@
 # General application settings and logging configuration.
 
 import os
-from dotenv import load_dotenv
 import logging
 import sys
+
+try:
+    from dotenv import load_dotenv
+except Exception:
+    def load_dotenv(*_args, **_kwargs):
+        """Fallback no-op if python-dotenv is unavailable."""
+        pass
 
 # Load environment variables from .env file
 load_dotenv()
