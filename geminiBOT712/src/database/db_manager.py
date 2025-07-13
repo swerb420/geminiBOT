@@ -108,3 +108,27 @@ class DBManager:
             rows = await conn.fetch(query)
         return [dict(row) for row in rows]
 
+    async def update_trade_stop(self, trade_id: int, new_stop: float):
+        """Updates the stop loss for an existing trade."""
+        query = "UPDATE trades SET stop_loss = $1 WHERE id = $2;"
+        async with self.pool.acquire() as conn:
+            await conn.execute(query, new_stop, trade_id)
+        logger.info(f"Trade {trade_id} stop loss updated to {new_stop}")
+
+    async def close_trade(self, trade_id: int, exit_price: float):
+        """Closes a trade and returns the updated record."""
+        query = (
+            "UPDATE trades SET exit_price = $1, exit_timestamp = NOW(), status = 'closed' "
+            "WHERE id = $2 RETURNING *;"
+        )
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(query, exit_price, trade_id)
+        return dict(row) if row else None
+
+    async def update_signal_outcome(self, signal_id: int, pnl: float):
+        """Records the final outcome of a signal."""
+        query = "UPDATE signals SET status = 'closed', outcome = $1 WHERE id = $2;"
+        async with self.pool.acquire() as conn:
+            await conn.execute(query, pnl, signal_id)
+        logger.info(f"Signal {signal_id} closed with P&L {pnl}")
+

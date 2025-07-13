@@ -60,5 +60,18 @@ class VolatilityManager:
             stop_loss = entry_price - (atr * multiplier)
         else: # BEARISH
             stop_loss = entry_price + (atr * multiplier)
-            
+
         return stop_loss
+
+    def trailing_stop(self, current_price: float, existing_stop: float, direction: str,
+                       atr: float, multiplier: float = 2.0) -> float:
+        """Calculates a new stop loss that trails the current price."""
+        if atr <= 0:
+            return existing_stop
+
+        if direction == 'BULLISH':
+            new_stop = max(existing_stop, current_price - (atr * multiplier))
+        else:  # BEARISH
+            new_stop = min(existing_stop, current_price + (atr * multiplier))
+
+        return new_stop

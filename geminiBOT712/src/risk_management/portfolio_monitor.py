@@ -5,6 +5,7 @@ import asyncio
 from utils.logger import get_logger
 from database.db_manager import DBManager
 from config.trading_config import MAX_DAILY_LOSS_LIMIT
+from risk_management.volatility_manager import VolatilityManager
 import redis.asyncio as redis
 import json
 
@@ -20,6 +21,7 @@ class PortfolioMonitor:
         self.redis_client = redis.Redis(decode_responses=True)
         self.capital = portfolio_capital
         self.is_trading_halted = False
+        self.vol_manager = VolatilityManager()
 
     async def run(self, interval_seconds: int = 5): # Check more frequently
         logger.info("PortfolioMonitor started. Checking positions every 5s.")
@@ -48,6 +50,15 @@ class PortfolioMonitor:
             current_price = await self.get_current_price(trade['symbol'])
             if current_price is None:
                 continue
+
+            # Update trailing stop based on latest volatility
+            price_history = await self.db_manager.get_historical_data(trade['symbol'])
+            atr = self.vol_manager.calculate_atr(price_history) if not price_history.empty else 0
+            direction_label = 'BULLISH' if trade['entry_price'] < trade['stop_loss'] else 'BEARISH'
+            new_stop = self.vol_manager.trailing_stop(current_price, trade['stop_loss'], direction_label, atr)
+            if new_stop != trade['stop_loss']:
+                await self.db_manager.update_trade_stop(trade['id'], new_stop)
+                trade['stop_loss'] = new_stop
 
             # Check stop loss
             direction = 1 if trade['entry_price'] < trade['stop_loss'] else -1 # Determine direction from SL

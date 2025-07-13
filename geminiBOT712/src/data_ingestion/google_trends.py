@@ -18,41 +18,33 @@ class GoogleTrendsIngester(BaseIngester):
         self.pytrends = TrendReq(hl='en-US', tz=360)
         self.keywords = keywords
 
-    async def fetch_data(self):
-        """
-        Fetches interest over time for the configured keywords.
-        Note: The pytrends library is synchronous, so we run it in an executor
-        to avoid blocking the asyncio event loop.
-        """
+    async def fetch_keyword(self, keyword: str):
+        """Fetches interest over time for a single keyword."""
         loop = asyncio.get_running_loop()
-        
+        await loop.run_in_executor(
+            None,
+            self.pytrends.build_payload,
+            [keyword],
+            cat=0,
+            timeframe='now 1-d',
+            geo='',
+            gprop=''
+        )
+
+        interest_df = await loop.run_in_executor(None, self.pytrends.interest_over_time)
+        if interest_df.empty or keyword not in interest_df.columns:
+            return
+
+        latest_interest = interest_df[keyword].iloc[-1]
+        logger.info(f"Google Trends interest for '{keyword}': {latest_interest}")
+        trend_data = {"keyword": keyword, "interest": int(latest_interest)}
+        await self.publish_to_redis('google_trends', trend_data)
+
+    async def fetch_data(self):
+        """Fetches interest data concurrently for all configured keywords."""
         try:
-            # Build the payload
-            await loop.run_in_executor(
-                None, 
-                self.pytrends.build_payload, 
-                self.keywords, 
-                cat=0, 
-                timeframe='now 1-d', # Interest over the last day
-                geo='', 
-                gprop=''
-            )
-            
-            # Get interest over time
-            interest_df = await loop.run_in_executor(None, self.pytrends.interest_over_time)
-            
-            if interest_df.empty:
-                logger.info("No new Google Trends data.")
-                return
-
-            for keyword in self.keywords:
-                if keyword in interest_df.columns:
-                    latest_interest = interest_df[keyword].iloc[-1]
-                    logger.info(f"Google Trends interest for '{keyword}': {latest_interest}")
-                    trend_data = {"keyword": keyword, "interest": int(latest_interest)}
-                    await self.publish_to_redis('google_trends', trend_data)
-
+            tasks = [self.fetch_keyword(k) for k in self.keywords]
+            await asyncio.gather(*tasks)
         except Exception as e:
-            # The Google Trends API can be sensitive to too many requests
             logger.error(f"Error fetching Google Trends data: {e}", exc_info=True)
 

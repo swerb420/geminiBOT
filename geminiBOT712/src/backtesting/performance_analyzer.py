@@ -38,7 +38,9 @@ class PerformanceAnalyzer:
         # Risk & Return
         returns = self.equity_curve.pct_change().dropna()
         sharpe_ratio = self.calculate_sharpe(returns)
+        sortino_ratio = self.calculate_sortino(returns)
         max_drawdown = self.calculate_max_drawdown()
+        cagr = self.calculate_cagr()
 
         metrics = {
             "Net Profit": f"${net_profit:,.2f}",
@@ -49,6 +51,8 @@ class PerformanceAnalyzer:
             "Average Loss": f"${avg_loss:,.2f}",
             "Win/Loss Ratio": f"{win_loss_ratio:.2f}",
             "Sharpe Ratio": f"{sharpe_ratio:.2f}",
+            "Sortino Ratio": f"{sortino_ratio:.2f}",
+            "CAGR": f"{cagr:.2%}",
             "Max Drawdown": f"{max_drawdown:.2%}",
         }
         return metrics
@@ -64,6 +68,25 @@ class PerformanceAnalyzer:
         roll_max = self.equity_curve.cummax()
         drawdown = (self.equity_curve - roll_max) / roll_max
         return abs(drawdown.min())
+
+    def calculate_sortino(self, returns, risk_free_rate=0.02):
+        """Calculates the annualized Sortino Ratio."""
+        downside = returns[returns < 0]
+        if downside.std() == 0:
+            return 0
+        excess_returns = returns - (risk_free_rate / 252)
+        return np.sqrt(252) * excess_returns.mean() / downside.std()
+
+    def calculate_cagr(self):
+        """Computes the compound annual growth rate of the equity curve."""
+        if self.equity_curve.empty:
+            return 0.0
+        start_val = self.equity_curve.iloc[0]
+        end_val = self.equity_curve.iloc[-1]
+        years = len(self.equity_curve) / 252
+        if start_val <= 0 or years <= 0:
+            return 0.0
+        return (end_val / start_val) ** (1 / years) - 1
 
     def print_report(self):
         """Prints a formatted report of the performance metrics."""
