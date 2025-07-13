@@ -54,4 +54,3 @@ class UnusualWhalesIngester(BaseIngester):
             logger.error(f"HTTP error fetching from Unusual Whales: {e.response.status_code} - {e.response.text}")
         except Exception as e:
             logger.error(f"An error occurred while fetching from Unusual Whales: {e}", exc_info=True)
-```python

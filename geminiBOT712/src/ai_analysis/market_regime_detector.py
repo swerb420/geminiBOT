@@ -59,4 +59,3 @@ class MarketRegimeDetector:
             except Exception as e:
                 logger.error(f"Error in MarketRegimeDetector loop: {e}")
             await asyncio.sleep(1800) # Check every 30 minutes
-```python

@@ -54,4 +54,3 @@ class BaseIngester(ABC):
         """Closes the HTTP and Redis clients."""
         await self.client.aclose()
         await self.redis_client.close()
-```python

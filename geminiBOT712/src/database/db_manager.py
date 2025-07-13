@@ -108,4 +108,3 @@ class DBManager:
             rows = await conn.fetch(query)
         return [dict(row) for row in rows]
 
-```python

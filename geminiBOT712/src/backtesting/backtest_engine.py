@@ -105,4 +105,3 @@ class BacktestEngine:
         position['pnl'] = pnl
         logger.info(f"CLOSE {position['direction']} @ {price:.2f} on {timestamp} | P&L: ${pnl:,.2f}")
 
-```python

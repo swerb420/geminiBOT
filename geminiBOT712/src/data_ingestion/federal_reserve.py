@@ -59,4 +59,3 @@ class FederalReserveIngester(BaseIngester):
         """Fetches data for all configured FRED series concurrently."""
         tasks = [self.fetch_series(sid) for sid in self.series_ids]
         await asyncio.gather(*tasks)
-```python
