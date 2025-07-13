@@ -61,4 +61,3 @@ class LiveBroker(BaseTradeExecutor):
         except Exception as e:
             logger.error(f"Could not get live price from broker for {symbol}: {e}")
             return await super().get_current_price(symbol) # Fallback to Redis cache
-```python

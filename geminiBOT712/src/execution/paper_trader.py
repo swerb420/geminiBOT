@@ -67,4 +67,3 @@ class PaperTrader(BaseTradeExecutor):
             return None
         price_data = json.loads(price_data_json)
         return price_data.get('regularMarketPrice')
-```python

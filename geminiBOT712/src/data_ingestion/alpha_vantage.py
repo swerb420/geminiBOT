@@ -56,4 +56,3 @@ class AlphaVantageIngester(BaseIngester):
             if "-USD" in symbol: continue # Skip crypto
             await self.fetch_symbol_overview(symbol)
             await asyncio.sleep(15) # Wait 15s between requests to stay under the limit
-```python

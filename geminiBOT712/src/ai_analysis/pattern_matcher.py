@@ -56,4 +56,3 @@ class PatternMatcher:
 
         return patterns_found
 
-```python

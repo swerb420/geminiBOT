@@ -55,4 +55,3 @@ class StocktwitsIngester(BaseIngester):
         tasks = [self.stream_symbol(symbol) for symbol in self.symbols if "-USD" not in symbol]
         await asyncio.gather(*tasks)
 
-```python

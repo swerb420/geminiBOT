@@ -30,4 +30,3 @@ async def send_system_alert(message: str, level: str = "INFO"):
     """Convenience function to access the AlertManager singleton."""
     await AlertManager().send_alert(message, level)
 
-```python

@@ -52,4 +52,3 @@ class BigShortIngester(BaseIngester):
             logger.error(f"HTTP error fetching from BigShort: {e.response.status_code} - {e.response.text}")
         except Exception as e:
             logger.error(f"An error occurred while fetching from BigShort: {e}", exc_info=True)
-```python

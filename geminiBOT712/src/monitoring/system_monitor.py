@@ -48,4 +48,3 @@ class SystemMonitor:
         except Exception as e:
             logger.error(f"Error during system health check: {e}", exc_info=True)
 
-```python
