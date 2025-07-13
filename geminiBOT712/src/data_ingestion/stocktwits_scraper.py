@@ -22,7 +22,8 @@ class StocktwitsIngester(BaseIngester):
         url = f"https://api.stocktwits.com/api/2/streams/symbol/{symbol}.json"
         
         try:
-            response = await self.request_with_retries("GET", url, timeout=20.0)
+            response = await self.client.get(url, timeout=20.0)
+            response.raise_for_status()
             data = response.json()
             
             for message in data.get('messages', []):
@@ -54,3 +55,4 @@ class StocktwitsIngester(BaseIngester):
         tasks = [self.stream_symbol(symbol) for symbol in self.symbols if "-USD" not in symbol]
         await asyncio.gather(*tasks)
 
+```python

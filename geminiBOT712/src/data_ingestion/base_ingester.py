@@ -38,26 +38,6 @@ class BaseIngester(ABC):
         except Exception as e:
             logger.error(f"Failed to publish to Redis channel '{channel}': {e}")
 
-    async def request_with_retries(self, method: str, url: str, *, retries: int = 3, backoff: float = 2.0, **kwargs) -> httpx.Response:
-        """Makes an HTTP request with exponential backoff retries."""
-        delay = 1.0
-        for attempt in range(1, retries + 1):
-            try:
-                response = await self.client.request(method, url, **kwargs)
-                response.raise_for_status()
-                return response
-            except (httpx.RequestError, httpx.HTTPStatusError) as e:
-                logger.warning(
-                    f"Attempt {attempt} failed for {url}: {e}", exc_info=True
-                )
-                if attempt == retries:
-                    logger.error(
-                        f"Exceeded {retries} retries for {url}", exc_info=True
-                    )
-                    raise
-                await asyncio.sleep(delay)
-                delay *= backoff
-
     async def run(self, interval_seconds: int):
         """
         Runs the data fetching process at a specified interval.
@@ -74,3 +54,4 @@ class BaseIngester(ABC):
         """Closes the HTTP and Redis clients."""
         await self.client.aclose()
         await self.redis_client.close()
+```python

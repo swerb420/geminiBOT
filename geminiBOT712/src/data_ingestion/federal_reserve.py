@@ -40,7 +40,8 @@ class FederalReserveIngester(BaseIngester):
             "sort_order": "desc"
         }
         try:
-            response = await self.request_with_retries("GET", url, params=params)
+            response = await self.client.get(url, params=params)
+            response.raise_for_status()
             data = response.json()
             latest_observation = data.get('observations', [{}])[0]
             
@@ -58,3 +59,4 @@ class FederalReserveIngester(BaseIngester):
         """Fetches data for all configured FRED series concurrently."""
         tasks = [self.fetch_series(sid) for sid in self.series_ids]
         await asyncio.gather(*tasks)
+```python

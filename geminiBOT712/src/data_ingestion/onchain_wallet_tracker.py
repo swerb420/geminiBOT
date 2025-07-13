@@ -117,3 +117,4 @@ class OnChainWalletTracker(BaseIngester):
             await self.w3.provider.disconnect()
         logger.info("OnChainWalletTracker has been shut down.")
 
+```python

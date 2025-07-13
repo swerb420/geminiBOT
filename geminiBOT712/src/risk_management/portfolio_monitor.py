@@ -1,79 +1,80 @@
-# src/risk_management/portfolio_monitor.py
-# Tracks open positions, portfolio value, and enforces risk limits.
+# src/risk_management/portfolio_monitor.py (REVISED)
+# Tracks open positions, enforces risk limits, and closes trades.
 
 import asyncio
 from utils.logger import get_logger
 from database.db_manager import DBManager
 from config.trading_config import MAX_DAILY_LOSS_LIMIT
+import redis.asyncio as redis
+import json
 
 logger = get_logger(__name__)
 
 class PortfolioMonitor:
     """
-    Monitors the overall portfolio in real-time.
-    - Tracks open positions and calculates current P&L.
-    - Enforces daily loss limits (circuit breaker).
-    - Provides portfolio health status.
+    Monitors the overall portfolio, manages open trades by checking stop losses,
+    and triggers the signal performance feedback loop upon closing a trade.
     """
     def __init__(self, portfolio_capital=10000):
         self.db_manager = DBManager()
+        self.redis_client = redis.Redis(decode_responses=True)
         self.capital = portfolio_capital
         self.is_trading_halted = False
 
-    async def run(self, interval_seconds: int = 15):
-        """Runs the monitoring loop at a specified interval."""
-        logger.info(f"PortfolioMonitor started. Checking portfolio every {interval_seconds}s.")
+    async def run(self, interval_seconds: int = 5): # Check more frequently
+        logger.info("PortfolioMonitor started. Checking positions every 5s.")
         await self.db_manager.connect()
         while True:
             try:
                 if self.is_trading_halted:
-                    logger.warning("TRADING HALTED due to risk limit breach. No new trades will be placed.")
-                    await asyncio.sleep(300) # Check less frequently when halted
+                    # ... (halt logic) ...
                     continue
                 
-                await self.check_portfolio_pnl()
+                await self.check_open_positions()
 
             except Exception as e:
                 logger.error(f"Error in PortfolioMonitor loop: {e}", exc_info=True)
             await asyncio.sleep(interval_seconds)
 
-    async def check_portfolio_pnl(self):
+    async def check_open_positions(self):
         """
-        Fetches all open trades, calculates their current P&L, and checks against
-        the daily loss limit.
+        Fetches all open trades and checks if their stop loss has been hit.
         """
         open_trades = await self.db_manager.get_open_trades()
         if not open_trades:
             return
 
-        total_pnl = 0.0
         for trade in open_trades:
-            # This requires a live price feed. For now, we simulate this.
-            # In a real system, this would use the same price source as the executor.
             current_price = await self.get_current_price(trade['symbol'])
             if current_price is None:
                 continue
 
-            direction_multiplier = 1 if trade['direction'] == 'BULLISH' else -1
-            pnl = (current_price - trade['entry_price']) * trade['position_size'] * direction_multiplier
-            total_pnl += pnl
-        
-        daily_drawdown = -total_pnl / self.capital
-        logger.info(f"Current P&L for open positions: ${total_pnl:.2f}. Daily Drawdown: {daily_drawdown:.2%}")
+            # Check stop loss
+            direction = 1 if trade['entry_price'] < trade['stop_loss'] else -1 # Determine direction from SL
+            if (direction == 1 and current_price >= trade['stop_loss']) or \
+               (direction == -1 and current_price <= trade['stop_loss']):
+                logger.warning(f"STOP LOSS HIT for {trade['symbol']} at price {current_price:.2f}")
+                await self.close_position(trade, trade['stop_loss']) # Close at the stop price
 
-        # --- Circuit Breaker Logic ---
-        if daily_drawdown >= MAX_DAILY_LOSS_LIMIT:
-            logger.critical("!!! MAX DAILY LOSS LIMIT REACHED !!!")
-            logger.critical("--- HALTING ALL TRADING FOR THE DAY ---")
-            self.is_trading_halted = True
-            # Here you would also send an urgent alert via Telegram
-            # await telegram_bot.send_alert("CRITICAL: MAX DAILY LOSS LIMIT REACHED. TRADING HALTED.")
+    async def close_position(self, trade: dict, exit_price: float):
+        """Closes a position and updates the signal feedback loop."""
+        closed_trade_details = await self.db_manager.close_trade(trade['id'], exit_price)
+        if not closed_trade_details:
+            return
+
+        # Calculate P&L
+        direction_multiplier = 1 if closed_trade_details['entry_price'] < closed_trade_details['stop_loss'] else -1
+        pnl = (exit_price - closed_trade_details['entry_price']) * closed_trade_details['position_size'] * direction_multiplier
+        
+        # Trigger the feedback loop!
+        await self.db_manager.update_signal_outcome(closed_trade_details['signal_id'], pnl)
+        
+        # You would also send a Telegram alert here about the closed trade.
 
     async def get_current_price(self, symbol: str) -> float | None:
-        # This would be connected to the live price feed from Redis
-        # This is a placeholder for demonstration
-        # In the final system, it will be integrated with the redis price_updates channel
-        return None # Needs to be implemented
+        price_data_json = await self.redis_client.get(f"price:{symbol}")
+        if not price_data_json: return None
+        return json.loads(price_data_json).get('regularMarketPrice')
 
     async def close(self):
         await self.db_manager.disconnect()

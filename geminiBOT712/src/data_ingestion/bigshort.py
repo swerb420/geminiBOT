@@ -34,7 +34,8 @@ class BigShortIngester(BaseIngester):
         params = {"token": self.api_key}
 
         try:
-            response = await self.request_with_retries("GET", url, params=params)
+            response = await self.client.get(url, params=params)
+            response.raise_for_status()
             flow_data = response.json().get('data', [])
 
             if not flow_data:
@@ -51,3 +52,4 @@ class BigShortIngester(BaseIngester):
             logger.error(f"HTTP error fetching from BigShort: {e.response.status_code} - {e.response.text}")
         except Exception as e:
             logger.error(f"An error occurred while fetching from BigShort: {e}", exc_info=True)
+```python

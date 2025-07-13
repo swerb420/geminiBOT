@@ -53,3 +53,4 @@ class RedditIngester(BaseIngester):
     async def close(self):
         if self.reddit:
             await self.reddit.close()
+```python
